@@ -14,6 +14,7 @@ import MyCrops from '@/views/farmer/MyCrops.vue'
 // Buyer
 import Marketplace from '@/views/buyer/Marketplace.vue'
 import CropDetail from '@/views/buyer/CropDetail.vue'
+import FarmerInterests from '@/views/farmer/Interests.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -59,7 +60,12 @@ const routes = [
   path: '/crops/:id',
   name: 'crop-detail',
   component: CropDetail
+},
+{
+  path: '/farmer/interests',
+  component: FarmerInterests
 }
+
 ]
 
 const router = createRouter({

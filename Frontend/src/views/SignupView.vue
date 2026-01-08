@@ -26,11 +26,11 @@ const signup = async () => {
 
   try {
     const result = await authStore.signup({
-      email: email.value,
-      password: password.value,
-      role: role.value,
-      location: location.value || null
-    })
+  email,
+  password,
+  role,
+  phone
+})
 
     if (result.success) {
       router.push('/home')
@@ -60,7 +60,12 @@ const signup = async () => {
           placeholder="your@email.com"
           required
         />
-
+<InputField
+  v-if="role === 'Buyer'"
+  v-model="phone"
+  label="Phone Number (WhatsApp)"
+  placeholder="91XXXXXXXXXX"
+/>
         <InputField
           v-model="password"
           label="Password"

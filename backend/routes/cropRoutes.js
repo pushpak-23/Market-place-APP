@@ -79,33 +79,68 @@ router.post(
 )
 router.get('/', async (req, res) => {
   try {
-    const [crops] = await db.execute(`
-      SELECT c.id, c.name, c.quantity, c.quality, c.price, c.location
-      FROM crops c
-      ORDER BY c.created_at DESC
-    `)
+    const { location, quality, minPrice, maxPrice } = req.query
 
-    for (const crop of crops) {
+    let conditions = []
+    let values = []
+
+    if (location) {
+      conditions.push('c.location LIKE ?')
+      values.push(`%${location}%`)
+    }
+
+    if (quality) {
+      conditions.push('c.quality = ?')
+      values.push(quality)
+    }
+
+    if (minPrice) {
+      conditions.push('c.price >= ?')
+      values.push(minPrice)
+    }
+
+    if (maxPrice) {
+      conditions.push('c.price <= ?')
+      values.push(maxPrice)
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(' AND ')}`
+      : ''
+
+    const [rows] = await db.execute(`
+      SELECT 
+        c.*,
+        COUNT(ci.id) AS interest_count
+      FROM crops c
+      LEFT JOIN crop_interests ci ON ci.crop_id = c.id
+      ${whereClause}
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `, values)
+
+    for (const crop of rows) {
       const [images] = await db.execute(
-        `SELECT image_url FROM crop_images WHERE crop_id = ?`,
+        'SELECT image_url FROM crop_images WHERE crop_id = ?',
         [crop.id]
       )
-
       crop.images = images.map(i => i.image_url)
     }
 
-    res.json(crops)
+    res.json(rows)
   } catch (err) {
     console.error(err)
-    res.status(500).json({ message: 'Failed to fetch crops' })
+    res.status(500).json({ message: 'Failed to load crops' })
   }
 })
+
 router.get('/:id', async (req, res) => {
   try {
     const cropId = req.params.id
 
+    // 1️⃣ Get crop
     const [[crop]] = await db.execute(
-      `SELECT * FROM crops WHERE id = ?`,
+      'SELECT * FROM crops WHERE id = ?',
       [cropId]
     )
 
@@ -113,12 +148,21 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Crop not found' })
     }
 
+    // 2️⃣ Get images
     const [images] = await db.execute(
-      `SELECT image_url FROM crop_images WHERE crop_id = ?`,
+      'SELECT image_url FROM crop_images WHERE crop_id = ?',
       [cropId]
     )
 
     crop.images = images.map(i => i.image_url)
+
+    // 3️⃣ Get interest count
+    const [[countRow]] = await db.execute(
+      'SELECT COUNT(*) AS count FROM crop_interests WHERE crop_id = ?',
+      [cropId]
+    )
+
+    crop.interest_count = countRow.count
 
     res.json(crop)
   } catch (err) {
@@ -126,4 +170,5 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Failed to load crop' })
   }
 })
+
 module.exports = router

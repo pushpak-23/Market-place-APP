@@ -1,57 +1,83 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/userModel');
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const db = require('../config/db')
 
+// SIGNUP
 const signup = async (req, res) => {
-  const { email, password, role, location } = req.body;
+  const { email, password, role, phone } = req.body
 
   if (!email || !password || !role) {
-    return res.status(400).json({ message: 'Missing required fields' });
+    return res.status(400).json({ message: 'Missing required fields' })
   }
 
   try {
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return res.status(409).json({ message: 'User already exists' });
+    // Check existing user
+    const [[existing]] = await db.execute(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    )
+
+    if (existing) {
+      return res.status(409).json({ message: 'User already exists' })
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    const userId = await User.create(email, hashedPassword, role, location);
+    // Insert user
+    const [result] = await db.execute(
+      `INSERT INTO users (email, password, role, phone)
+       VALUES (?, ?, ?, ?)`,
+      [email, hashedPassword, role, phone || null]
+    )
 
-    const token = jwt.sign({ userId, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { userId: result.insertId, role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    )
 
-    res.status(201).json({ message: 'User created', token });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    res.status(201).json({ token })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Signup failed' })
   }
-};
+}
 
+// LOGIN
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body
 
   if (!email || !password) {
-    return res.status(400).json({ message: 'Missing credentials' });
+    return res.status(400).json({ message: 'Missing credentials' })
   }
 
   try {
-    const user = await User.findByEmail(email);
+    const [[user]] = await db.execute(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    )
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' })
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' })
     }
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    )
 
-    res.json({ message: 'Login successful', token });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    res.json({ token })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Login failed' })
   }
-};
+}
 
-module.exports = { signup, login };
+module.exports = { signup, login }

@@ -4,18 +4,50 @@ import { useRoute } from 'vue-router'
 import { useCropsStore } from '@/stores/crops'
 import { useAuthStore } from '@/stores/auth'
 
+
+import axios from 'axios'
 const route = useRoute()
 const cropsStore = useCropsStore()
 const authStore = useAuthStore()
-
+const interested = ref(false)
 const crop = ref(null)
 const loading = ref(true)
 
 onMounted(async () => {
   crop.value = await cropsStore.fetchCropById(route.params.id)
+
+  if (!isFarmer) {
+    const res = await axios.get(
+      `http://localhost:3000/api/interests/check/${crop.value.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${authStore.token}`
+        }
+      }
+    )
+    interested.value = res.data.interested
+  }
+
   loading.value = false
 })
+const sendInterest = async () => {
+  if (!authStore.token) {
+    alert('Please login to show interest')
+    return
+  }
 
+  await axios.post(
+    'http://localhost:3000/api/interests',
+    { cropId: crop.value.id },
+    {
+      headers: {
+        Authorization: `Bearer ${authStore.token}`
+      }
+    }
+  )
+
+  interested.value = true
+}
 const isFarmer = authStore.user?.role === 'Farmer'
 </script>
 
@@ -55,11 +87,17 @@ const isFarmer = authStore.user?.role === 'Farmer'
 
       <!-- Buyer Action -->
       <button
-        v-if="!isFarmer"
-        class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-semibold"
-      >
-        I’m Interested
-      </button>
+  v-if="!isFarmer"
+  :disabled="interested"
+  @click="sendInterest"
+  class="mt-4 w-full py-3 rounded-lg font-semibold"
+  :class="interested
+    ? 'bg-gray-400 text-white'
+    : 'bg-green-600 text-white'"
+>
+  {{ interested ? 'Interest Sent' : 'I’m Interested' }}
+</button>
+
 
       <!-- Farmer Actions (future) -->
       <div v-if="isFarmer" class="mt-4 text-gray-500 text-sm">

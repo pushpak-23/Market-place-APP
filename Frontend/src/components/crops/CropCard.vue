@@ -36,6 +36,12 @@ const openDetails = () => {
       <p class="font-bold text-green-700 mt-1">
         ₹{{ crop.price }}
       </p>
+
+      <!-- 🔥 INTEREST COUNT -->
+      <p class="text-xs text-gray-500 mt-1">
+        ❤️ {{ crop.interest_count }} buyers interested
+      </p>
     </div>
   </div>
 </template>
+
