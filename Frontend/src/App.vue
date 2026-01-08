@@ -1,24 +1,25 @@
-<script setup></script>
+<!-- src/App.vue -->
+<script setup>
+import { RouterView } from 'vue-router'
+import BottomNav from '@/components/layout/BottomNav.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+</script>
 
 <template>
-  <div
-    class="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4"
-  >
-    <h1 class="text-4xl font-bold text-green-600 mb-4">You did it!</h1>
-
-    <p class="text-gray-700 text-lg">
-      Visit
-      <a
-        href="https://vuejs.org/"
-        target="_blank"
-        rel="noopener"
-        class="text-blue-600 font-medium hover:underline hover:text-blue-700 transition"
-      >
-        vuejs.org
-      </a>
-      to read the documentation
-    </p>
+  <div class="min-h-screen bg-gray-50 antialiased">
+    <!-- You can add global layout wrapper here later (AppLayout component) -->
+    <RouterView />
+    <BottomNav v-if="authStore.isAuthenticated" />
   </div>
 </template>
 
-<style scoped></style>
+<style>
+/* Optional: global overrides or custom utilities */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+}
+</style>
